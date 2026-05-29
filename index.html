@@ -100,7 +100,7 @@
       <div class="column is-four-fifths">
         <h2 class="title is-3">Abstract</h2>
         <div class="content has-text-justified">
-          <p>We study whether targeted auxiliary evidence can improve egocentric video QA on top of a modern VLM's native video input. Using HD-EPIC — a highly-detailed egocentric benchmark with 41 hours of video and 26K multiple-choice questions across 7 major categories — we compare a native-video-only baseline against six evidence tools: uniform frame sampling, CLIP retrieval (ViT-B/32), a Motion+CLIP cascade, OCR Crop, object tracking (GroundingDINO-tiny), and Uniform+CLIP.</p>
+          <p>We study whether targeted auxiliary evidence can improve egocentric video QA under practical frame-budget and model-size constraints. Using HD-EPIC, a highly-detailed egocentric benchmark with 41 hours of video and 26K multiple-choice questions across 7 major categories, we compare a resource-bounded native-video baseline against six evidence tools: uniform frame sampling, CLIP retrieval (ViT-B/32), a Motion+CLIP cascade, OCR Crop, object tracking (GroundingDINO-tiny), and Uniform+CLIP.</p>
           <p>We run a controlled ablation under a fixed budget of k=8 auxiliary frames, comparing augmentation (native video + auxiliary frames) against replacement (auxiliary frames only). On the 719-question fair intersection used for the mode comparison, the best augment tool (OCR Crop, 33.7%) barely edges the best replace tool (CLIP, 32.5%), both near the no-tool baseline of 32.3%. Replace mode, however, preserves a much larger per-question routing opportunity on this matched subset (+17.4 pp oracle gap vs. +6.1 pp for augment), making it cost-efficient at ~9× fewer frames.</p>
           <p>Across 8 routing methods evaluated in replace mode, only a hand-crafted rule-based keyword router beats the best fixed tool (+4.0 pp), recovering the entire between-category gap. Learned classifiers fall below their matched single-tool baselines across the full, helpful, and cached-frame subsets. A large within-category gap of +16 pp to the perfect per-question oracle remains.</p>
         </div>
@@ -128,10 +128,10 @@
       <div class="column is-full">
         <h2 class="title is-3" id="intro">I. Introduction</h2>
         <div class="content has-text-justified">
-          <p>Long-form first-person video question answering is inherently an active-vision problem: not every moment in a video is equally informative, and the evidence needed to answer a question may be brief, local, or easy to miss. Modern VLMs process long videos by sampling frames at a fixed rate. In our setup, Qwen3-VL-2B samples the native video at <strong>1 FPS</strong> with a cap of <strong>64 frames</strong> — for a 6.4-minute clip (384 s), this means one frame every ≈ 6 seconds, leaving large temporal gaps where brief events can be missed entirely. Important cues such as scale readings, ingredient labels, or brief object interactions can be easily missed.</p>
+          <p>Long-form first-person video question answering is inherently an active-vision problem: not every moment in a video is equally informative, and the evidence needed to answer a question may be brief, local, or easy to miss. In practice, however, compute and memory constraints often prevent us from feeding every frame to a very large video model. We therefore study a resource-bounded setting with a frozen Qwen3-VL-2B model, sampling the native video at <strong>1 FPS</strong> with a cap of <strong>64 frames</strong>. For a 6.4-minute clip (384 s), this means one frame every ≈ 6 seconds, leaving large temporal gaps where brief events can be missed entirely. Important cues such as scale readings, ingredient labels, or brief object interactions can be easily missed.</p>
           <p>Prior work addresses this by selecting or replacing parts of the visual input with targeted evidence. However, these approaches discard the global temporal context of the full video, which a modern video-native VLM already processes well. We instead study <strong>auxiliary evidence selection</strong> in two modes: <em>augmentation</em> (native video + auxiliary frames) and <em>replacement</em> (auxiliary frames only). We first compare both modes under the same budget, then use replacement — which preserves a 3× larger per-question routing opportunity — as the setting for our routing experiments.</p>
           <p>This framing lets us ask three precise questions: (1) Can targeted auxiliary evidence improve egocentric video QA on top of the native video input of a modern VLM? (2) Is augmentation more effective than replacement under the same evidence budget? (3) If gains are category-specific, are they strong enough to justify question-type-conditioned tool routing?</p>
-          <p>We evaluate on HD-EPIC, a highly-detailed egocentric benchmark with 41 hours of kitchen video and 26K multiple-choice VQA questions across 7 major categories including Recipes, Ingredients, Object Motion, Nutrition, and 3D Perception. We focus on clips ≥ 6.4 minutes, where Qwen3-VL's native frame sampling is sparse enough that targeted frame selection has a meaningful chance of recovering evidence the default pathway misses.</p>
+          <p>We evaluate on HD-EPIC, a highly-detailed egocentric benchmark with 41 hours of kitchen video and 26K multiple-choice VQA questions across subcategories within all 7 major categories including Recipes, Ingredients, Object Motion, Nutrition, and 3D Perception. We focus on clips ≥ 6.4 minutes, where a limited native-frame budget leaves enough temporal sparsity that targeted frame selection may recover evidence missed by uniform video sampling.</p>
         </div>
       </div>
     </div>
@@ -153,7 +153,7 @@
           <p><span class="rel-tag">Tool-based retrieval and agents</span> <strong>VideoAgent</strong> (Wang et al., ECCV 2024) uses a LLM as an agent that iteratively calls retrieval tools to assemble evidence, reasoning only over tool outputs without ever passing the full video to the VLM. <strong>Video-RAG</strong> (Luo et al., NeurIPS 2025) uses open-source tools (OCR, ASR, object detection) to extract text-based auxiliary information alongside video frames. Neither considers question-type-conditioned routing.</p>
 
           <h3 class="title is-4">Egocentric-specific works</h3>
-          <p><span class="rel-tag">Egocentric</span> <strong>MFAS</strong> (Zhang et al., ICML 2024) performs adaptive patch-level selection for egocentric VQA, showing that zooming on local details improves recognition of small objects — directly motivating our OCR+crop tool. <strong>EgoTextVQA</strong> (Zhou et al., CVPR 2025) shows that even Gemini 1.5 Pro reaches only 33% accuracy on scene-text questions in egocentric video — motivating the use of specialized OCR evidence.</p>
+          <p><span class="rel-tag">Egocentric</span> <strong>MFAS</strong> (Zhang et al., ICML 2024) performs adaptive patch-level selection for egocentric VQA, showing that zooming on local details improves recognition of small objects, directly motivating our OCR+crop tool. <strong>EgoTextVQA</strong> (Zhou et al., CVPR 2025) shows that even Gemini 1.5 Pro reaches only 33% accuracy on scene-text questions in egocentric video, motivating the use of specialized OCR evidence.</p>
         </div>
       </div>
     </div>
@@ -287,7 +287,7 @@
           </div>
 
           <h3 class="title is-4">Evaluation protocol</h3>
-          <p>We evaluate on HD-EPIC questions filtered to clips ≥ 6.4 minutes (<code>min_clip_duration_s=384</code>), excluding TIME-tagged and multi-video questions. This yields <strong>1,035 questions</strong> across <strong>10 categories</strong>. For augment/replace head-to-head comparisons we further restrict to the <em>fair intersection</em> of 719 questions where all 6 tools produce a result in both modes. Each condition is run in both augment (<code>native video + k aux frames</code>) and replace (<code>k aux frames only</code>) mode. The main metric is 5-choice multiple-choice accuracy.</p>
+          <p>We evaluate on HD-EPIC questions filtered to clips ≥ 6.4 minutes (<code>min_clip_duration_s=384</code>), excluding TIME-tagged and multi-video questions. This yields <strong>1,035 questions</strong> across <strong>10 categories</strong>. For augment/replace head-to-head comparisons we further restrict to the <em>fair intersection</em> of 719 questions where all 6 tools produce a result in both modes. Each condition is run in both augment (<code>native video + k aux frames</code>) and replace (<code>k aux frames only</code>) mode. The metric is 5-choice multiple-choice accuracy.</p>
 
           <h3 class="title is-4">Routing</h3>
           <p>In Stage 2, we test 8 routing strategies in replace mode (k=8): (1) category-level LOOCV, (2–3) TF-IDF bigrams with LogReg/kNN, (4) a rule-based keyword router (regex over question text), (5) tool-agreement ensemble majority vote, (6) CLIP text embeddings (ViT-B/32) with LogReg/kNN, (7) 11 visual features per question (motion energy, motion std, brightness, contrast, colorfulness, edge density, clip length, CLIP text-image similarity mean/max/std, OCR density) with LogReg/kNN, and (8) combined text+visual features. Methods 1–6 are evaluated with leave-one-category-out cross-validation (LOOCV) on all 1,035 questions and, where applicable, with 80/20 splits on the 700 helpful-category questions. Visual methods require cached frames, so Methods 7–8 use the visual subset (623 questions for LOOCV; 427 helpful-category questions for 80/20). Each learned method is tested with both Logistic Regression and k-NN (k=5).</p>
@@ -305,25 +305,25 @@
         <div class="content has-text-justified">
 
           <p>We run four experiments on HD-EPIC, each addressing one of our three research questions. The frozen VLM is Qwen3-VL-2B-Instruct throughout. All experiments use a default budget of <strong>k=8</strong> auxiliary frames drawn from a 1 FPS candidate pool. The evaluation set covers <strong>1,035 questions</strong> from 10 long-video categories (clips ≥ 6.4 min). For head-to-head augment/replace comparisons we use the <strong>fair intersection</strong> of 719 questions where all 6 tools are available in both modes.</p>
-          <p>Two reference points appear throughout: <strong>random chance = 20%</strong> (5-choice MCQ); and the <strong>perfect oracle</strong>, a theoretical upper bound computed by assigning each question the tool that answers it correctly — it cannot be deployed in practice but measures how much a router could gain if it made no mistakes.</p>
+          <p>Two reference points appear throughout: <strong>random chance = 20%</strong> (5-choice MCQ); and the <strong>perfect oracle</strong>, a theoretical upper bound computed by assigning each question the tool that answers it correctly. It cannot be deployed in practice but measures how much a router could gain if it made no mistakes.</p>
 
           <h3 class="title is-4">Qualitative examples</h3>
-          <p style="font-size:0.88rem;color:#555;margin-bottom:1.5rem">Each panel shows k=8 frames selected by two strategies for the same question. The correct answer is shown in bold; the strategy that retrieves the most informative frames for that question type is highlighted.</p>
+          <p style="font-size:0.88rem;color:#555;margin-bottom:1.5rem">Each panel shows k=8 frames selected by two strategies for the same question. </p>
 
           <!-- Example 1: CLIP wins -->
           <div style="border:1px solid #eee;border-radius:12px;overflow:hidden;margin-bottom:2rem">
             <div style="background:#111;padding:10px 18px;display:flex;align-items:center;gap:10px">
               <span style="background:#3b82f6;color:#fff;border-radius:5px;padding:2px 10px;font-size:0.68rem;font-weight:800;font-family:'Space Grotesk',sans-serif;flex-shrink:0">✓ CLIP wins</span>
-              <span style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.82rem;color:#fff">recipe_step — temporal step localization</span>
+              <span style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.82rem;color:#fff">recipe_step: temporal step localization</span>
             </div>
             <div style="padding:14px 18px;background:#fafafa;border-bottom:1px solid #eee">
               <div style="font-size:0.78rem;color:#555;margin-bottom:4px"><span style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#111">Question:</span> When did the participant perform step "Add couscous and boiling water to pot (no flame needed), leave until water has been absorbed" from recipe <em>Fish Cakes and Vegetables</em>?</div>
-              <div style="font-size:0.78rem;color:#555">Multiple-choice timestamps — CLIP retrieves frames semantically matching the pouring/mixing action.</div>
+              <div style="font-size:0.78rem;color:#555">Multiple-choice timestamps: CLIP retrieves frames semantically matching the pouring/mixing action.</div>
             </div>
             <div style="padding:14px 18px">
               <img src="static/images/clip_advantage.jpeg" alt="CLIP vs Uniform frame grids for recipe step question" class="qual-img" style="width:100%;border-radius:6px;display:block" onclick="openLightbox(this.src,this.alt)" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
               <div style="display:none;background:#f4f4f4;height:160px;border-radius:6px;align-items:center;justify-content:center;font-size:0.75rem;color:#aaa">[ Image manquante ]</div>
-              <p style="font-size:0.78rem;color:#666;margin-top:10px"><strong style="font-family:'Space Grotesk',sans-serif;color:#333">Observation.</strong> <strong>CLIP</strong> retrieves frames that are semantically close to the question text — the pot, couscous, and pouring action — concentrating evidence around the relevant step. <strong>Uniform</strong> spreads k=8 frames evenly over the full clip (often 20+ minutes), so the brief step may fall between sampled timestamps entirely. This illustrates the within-category diversity: for recipe_step questions, which require temporal localization, CLIP's text-image alignment is the right inductive bias.</p>
+              <p style="font-size:0.78rem;color:#666;margin-top:10px"><strong style="font-family:'Space Grotesk',sans-serif;color:#333">Observation.</strong> <strong>CLIP</strong> retrieves frames that are semantically close to the question text, such as the pot, couscous, and pouring action, concentrating evidence around the relevant step. <strong>Uniform</strong> spreads k=8 frames evenly over the full clip (often 20+ minutes), so the brief step may fall between sampled timestamps entirely. This illustrates the within-category diversity: for recipe_step questions, which require temporal localization, CLIP's text-image alignment is the right inductive bias.</p>
             </div>
           </div>
 
@@ -331,7 +331,7 @@
           <div style="border:1px solid #eee;border-radius:12px;overflow:hidden;margin-bottom:2rem">
             <div style="background:#111;padding:10px 18px;display:flex;align-items:center;gap:10px">
               <span style="background:#E2001A;color:#fff;border-radius:5px;padding:2px 10px;font-size:0.68rem;font-weight:800;font-family:'Space Grotesk',sans-serif;flex-shrink:0">✓ OCR Crop wins</span>
-              <span style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.82rem;color:#fff">ingredient_ingredient_weight — scale reading</span>
+              <span style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.82rem;color:#fff">ingredient_ingredient_weight: scale reading</span>
             </div>
             <div style="padding:14px 18px;background:#fafafa;border-bottom:1px solid #eee">
               <div style="font-size:0.78rem;color:#555;margin-bottom:4px"><span style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#111">Question:</span> How much did the participant weigh of brown onions in this video?</div>
@@ -340,11 +340,11 @@
             <div style="padding:14px 18px">
               <img src="static/images/ingredient_ingredient_weight.jpeg" alt="All 5 strategies for ingredient weight question" class="qual-img" style="width:100%;border-radius:6px;display:block" onclick="openLightbox(this.src,this.alt)" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
               <div style="display:none;background:#f4f4f4;height:160px;border-radius:6px;align-items:center;justify-content:center;font-size:0.75rem;color:#aaa">[ Image manquante ]</div>
-              <p style="font-size:0.78rem;color:#666;margin-top:8px">All 5 tools compared. CLIP, Motion+CLIP, and Object Tracking have no inductive bias toward text displays — their selected frames look virtually identical to Uniform (wide kitchen shots, no scale visible). Only OCR Crop consistently zooms in on the digital readout.</p>
-              <div style="margin-top:12px;margin-bottom:4px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.7px;font-family:'Space Grotesk',sans-serif;font-weight:700;color:#999">Focused view — OCR Crop vs Uniform</div>
+              <p style="font-size:0.78rem;color:#666;margin-top:8px">All 5 tools compared. CLIP, Motion+CLIP, and Object Tracking have no inductive bias toward text displays. Their selected frames look virtually identical to Uniform (wide kitchen shots, no scale visible). Only OCR Crop consistently zooms in on the digital readout.</p>
+              <div style="margin-top:12px;margin-bottom:4px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.7px;font-family:'Space Grotesk',sans-serif;font-weight:700;color:#999">Focused view: OCR Crop vs Uniform</div>
               <img src="static/images/ocr_uniform.jpeg" alt="OCR Crop vs Uniform focused comparison" class="qual-img" style="width:100%;border-radius:6px;display:block" onclick="openLightbox(this.src,this.alt)" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
               <div style="display:none;background:#f4f4f4;height:80px;border-radius:6px;align-items:center;justify-content:center;font-size:0.75rem;color:#aaa">[ Image manquante ]</div>
-              <p style="font-size:0.78rem;color:#666;margin-top:10px"><strong style="font-family:'Space Grotesk',sans-serif;color:#333">Observation.</strong> <strong>OCR Crop</strong> consistently retrieves frames where the digital scale is visible and readable (96, 98 g), providing a high-resolution crop of the display. <strong>Uniform</strong> sampling returns wide kitchen scenes — the scale may not even be in frame at the sampled timestamps. For a numeric-readout question, the evidence quality gap is decisive.</p>
+              <p style="font-size:0.78rem;color:#666;margin-top:10px"><strong style="font-family:'Space Grotesk',sans-serif;color:#333">Observation.</strong> <strong>OCR Crop</strong> consistently retrieves frames where the digital scale is visible and readable (96, 98 g), providing a high-resolution crop of the display. <strong>Uniform</strong> sampling returns wide kitchen scenes, meaning the scale may not even be in frame at the sampled timestamps. For a numeric-readout question, the evidence quality gap is decisive.</p>
             </div>
           </div>
 
@@ -357,7 +357,7 @@
             </div>
           </div>
 
-          <h3 class="title is-4">Augment vs. replace — headline (k=8, n=719)</h3>
+          <h3 class="title is-4">Augment vs. replace: headline (k=8, n=719)</h3>
           <!-- Headline comparison chart -->
           <div style="position:relative;height:270px;margin:1.5rem 0">
             <canvas id="headlineChart"></canvas>
@@ -477,14 +477,15 @@
           </div>
 
           <p style="font-size:0.78rem;color:#666;margin-top:0.5rem"><strong style="font-family:'Space Grotesk',sans-serif;color:#333">Figure 2.</strong> Routing opportunity decomposition on the full replace-mode routing set (k=8, n=1,035). This is larger than the 719-question fair intersection used in Figure 1. The +19.9 pp total gap splits into +3.9 pp between categories (fully recovered by the rule-based router) and +16.0 pp within categories (unsolved by any method).</p>
-          <p>On the full replace-mode set, the total routing potential (+19.9 pp) can be decomposed into two distinct gaps. The <strong>between-category gap (+3.9 pp)</strong> exists because the best tool differs across question categories — a router that simply knows the category and assigns its historically best tool recovers this gap entirely. The <strong>within-category gap (+16.0 pp)</strong> is harder: even within a single category, different questions benefit from different tools, and no method we tested can exploit this signal. This decomposition explains why Exp. 4 focuses on category-level routing first.</p>
+          <p>This larger replace-mode routing gap is interesting because replace uses far fewer frames than augment. One possible explanation is that auxiliary frames in augment mode are appended after the native video, which may make them harder for the model to integrate or may even distract it from the original temporal context. In replace mode, the model is forced to rely on the selected evidence frames, so each tool's inductive bias remains clearer and the difference between tools is easier to exploit.</p>
+          <p>On the full replace-mode set, the total routing potential (+19.9 pp) can be decomposed into two distinct gaps. The <strong>between-category gap (+3.9 pp)</strong> exists because the best tool differs across question categories. A router that simply knows the category and assigns its historically best tool recovers this gap entirely. The <strong>within-category gap (+16.0 pp)</strong> is harder: even within a single category, different questions benefit from different tools, and no method we tested can exploit this signal. This decomposition explains why Exp. 4 focuses on category-level routing first.</p>
 
           <!-- Experiment 2 -->
           <div style="display:flex;align-items:flex-start;gap:12px;margin:2rem 0 0.75rem;padding:12px 16px;background:#f9f9f9;border-left:3px solid #E2001A;border-radius:0 8px 8px 0">
             <div style="font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:1rem;color:#E2001A;flex-shrink:0;padding-top:1px">Exp. 2</div>
             <div>
               <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.88rem;color:#111">Which evidence tool works best, and does it vary by question category?</div>
-              <div style="font-size:0.78rem;color:#666;margin-top:3px">We compare six tools — <code>uniform</code>, <code>clip</code>, <code>motion_then_clip</code>, <code>ocr_crop</code>, <code>object_tracking</code>, <code>uniform+clip</code> — against the native baseline on the 719-question fair intersection, breaking results down by overall accuracy and by each of the 10 HD-EPIC categories.</div>
+              <div style="font-size:0.78rem;color:#666;margin-top:3px">We compare six tools: <code>uniform</code>, <code>clip</code>, <code>motion_then_clip</code>, <code>ocr_crop</code>, <code>object_tracking</code>, and <code>uniform+clip</code>, against the native baseline on the 719-question fair intersection, breaking results down by overall accuracy and by each of the 10 HD-EPIC categories.</div>
             </div>
           </div>
 
@@ -550,7 +551,7 @@
             })();
           </script>
           <p style="font-size:0.78rem;color:#666;text-align:center;margin-top:0.25rem"><strong style="font-family:'Space Grotesk',sans-serif;font-style:normal;color:#333">Figure 3.</strong> Per-tool accuracy in augment (dark) vs. replace (grey) modes (k=8, n=719). OCR Crop is the only tool with a large augment advantage (+3.5 pp). CLIP, Motion+CLIP, and Uniform+CLIP score higher in replace mode, showing augment is not uniformly better. Dashed red line = qwen_native (32.3%).</p>
-          <p>Augment does <em>not</em> uniformly outperform replace — CLIP, Motion+CLIP, and Uniform+CLIP each score higher in replace mode. OCR Crop is the only tool with a large augment advantage (+3.5 pp), because text/detail crops are complementary to the native video rather than redundant with it.</p>
+          <p>Augment does <em>not</em> uniformly outperform replace. CLIP, Motion+CLIP, and Uniform+CLIP each score higher in replace mode. OCR Crop is the only tool with a large augment advantage (+3.5 pp), because text/detail crops are complementary to the native video rather than redundant with it.</p>
 
           <h3 class="title is-4">Per-category analysis (augment, k=8, n=719)</h3>
           <div class="table-container" style="margin:1rem 0">
@@ -573,13 +574,13 @@
             </table>
           </div>
           <p style="font-size:0.78rem;color:#666;margin-top:0.25rem"><strong style="font-family:'Space Grotesk',sans-serif;color:#333">Table 2.</strong> Per-category breakdown (augment mode, k=8, n=719). For each category: native baseline, best augment tool with accuracy and Δ vs. native, and best replace tool for comparison.</p>
-          <p>In 8 of 10 categories, the per-category best augment tool beats <code>qwen_native</code> (1 tied, 1 below). The best tool varies widely by category — no single tool wins everywhere. Replace mode tends to produce higher best-tool scores in categories with high oracle headroom (e.g. <em>fine-grained</em>, <em>recipe step</em>), while augment dominates in <em>nutrition</em> and <em>ingredient exact</em>.</p>
+          <p>In 8 of 10 categories, the per-category best augment tool beats <code>qwen_native</code> (1 tied, 1 below). The best tool varies widely by category, and no single tool wins everywhere. Replace mode tends to produce higher best-tool scores in categories with high oracle headroom (e.g. <em>fine-grained</em>, <em>recipe step</em>), while augment dominates in <em>nutrition</em> and <em>ingredient exact</em>.</p>
           <div style="background:#f4f4f4;border-radius:8px;padding:10px 16px;margin:0.5rem 0 2rem;font-size:0.82rem">
-            <strong style="font-family:'Space Grotesk',sans-serif">Finding:</strong> No single tool dominates. All six tools win at least one category across augment/replace views. OCR Crop is the strongest globally (33.7% augment), driven by large gains in text-heavy and counting tasks. The best tool is a function of the question type — which motivates Exp. 4.
+            <strong style="font-family:'Space Grotesk',sans-serif">Finding:</strong> No single tool dominates. All six tools win at least one category across augment/replace views. OCR Crop is the strongest globally (33.7% augment), driven by large gains in text-heavy and counting tasks. The best tool is a function of the question type, which motivates Exp. 4.
           </div>
 
           <!-- Per-category heatmap (augment mode) -->
-          <p style="font-size:0.8rem;color:#666;margin-bottom:6px"><strong style="font-family:'Space Grotesk',sans-serif;color:#333">Figure 4.</strong> Heatmap — augment mode accuracy per tool per category (k=8, n=719). Color scale is normalized per row (white = row minimum, red = row maximum). ★ marks the best tool per category. All six tools win at least one augment category, confirming that no single evidence strategy is universally optimal.</p>
+          <p style="font-size:0.8rem;color:#666;margin-bottom:6px"><strong style="font-family:'Space Grotesk',sans-serif;color:#333">Figure 4.</strong> Heatmap: augment mode accuracy per tool per category (k=8, n=719). Color scale is normalized per row (white = row minimum, red = row maximum). ★ marks the best tool per category. All six tools win at least one augment category, confirming that no single evidence strategy is universally optimal.</p>
           <div style="overflow-x:auto;margin:0.5rem 0 1.5rem">
             <table id="heatmapTable" style="border-collapse:collapse;width:100%;font-size:0.74rem;font-family:'Inter',sans-serif"></table>
           </div>
@@ -623,7 +624,7 @@
             t.innerHTML = th+tb;
           })();
           </script>
-          <p>Reading the heatmap by row: rows where all cells have similar brightness (e.g. <em>recipe recog.</em>) indicate that all tools perform equally — no routing gain is possible. Rows with high contrast (e.g. <em>nutrition</em>, <em>ingredient exact</em>) signal that the right tool matters a lot. The ★ column shifts across rows, confirming that no single tool is universally optimal. This per-category variability is the direct motivation for routing in Exp. 4.</p>
+          <p>Reading the heatmap by row: rows where all cells have similar brightness (e.g. <em>recipe recog.</em>) indicate that all tools perform equally, so no routing gain is possible. Rows with high contrast (e.g. <em>nutrition</em>, <em>ingredient exact</em>) signal that the right tool matters a lot. The ★ column shifts across rows, confirming that no single tool is universally optimal. This per-category variability is the direct motivation for routing in Exp. 4.</p>
 
           <!-- Experiment 3 -->
           <div style="display:flex;align-items:flex-start;gap:12px;margin:2rem 0 0.75rem;padding:12px 16px;background:#f9f9f9;border-left:3px solid #E2001A;border-radius:0 8px 8px 0">
@@ -634,14 +635,14 @@
             </div>
           </div>
 
-          <h3 class="title is-4">Budget sensitivity — augment mode (obj. motion count, n=200, shown as representative)</h3>
+          <h3 class="title is-4">Budget sensitivity: augment mode (obj. motion count, n=200, shown as representative)</h3>
 
           <!-- Budget ablation line chart -->
           <div style="position:relative;height:280px;margin:1.5rem 0">
             <canvas id="budgetChart"></canvas>
           </div>
           <p style="font-size:0.78rem;color:#666;text-align:center;margin-top:0.25rem"><strong style="font-family:'Space Grotesk',sans-serif;font-style:normal;color:#333">Figure 5.</strong> Accuracy vs. frame budget in augment mode (<em>obj. motion count</em>, n=200). CLIP, Motion+CLIP, Object Tracking, and Uniform+CLIP collapse at k=32 due to resolution compression when 32 aux frames compete with the native video for context budget. OCR Crop and Uniform are robust.</p>
-          <p>At k=32 in augment mode, CLIP-based and tracking tools collapse catastrophically (−25 to −35 pp). When 32 aux frames are added alongside the native video, Qwen3-VL must fit all frames into a fixed context window — each frame is allocated fewer tokens, reducing its effective resolution. Tools that rely on fine-grained image features (CLIP similarity, GroundingDINO detections) degrade severely at low resolution. <code>ocr_crop</code> and <code>uniform</code> are robust because they do not depend on image-level similarity. This collapse does <em>not</em> appear in replace mode, where no native video competes for the context budget.</p>
+          <p>At k=32 in augment mode, CLIP-based and tracking tools collapse catastrophically (−25 to −35 pp). When 32 aux frames are added alongside the native video, Qwen3-VL must fit all frames into a fixed context window. Each frame is allocated fewer tokens, reducing its effective resolution. Tools that rely on fine-grained image features (CLIP similarity, GroundingDINO detections) degrade severely at low resolution. <code>ocr_crop</code> and <code>uniform</code> are robust because they do not depend on image-level similarity. This collapse does <em>not</em> appear in replace mode, where no native video competes for the context budget.</p>
           <div style="background:#f4f4f4;border-radius:8px;padding:10px 16px;margin:0.5rem 0 2rem;font-size:0.82rem">
             <strong style="font-family:'Space Grotesk',sans-serif">Finding:</strong> More frames is not always better. In augment mode, k=32 causes a catastrophic resolution collapse for CLIP/tracking tools (−35 pp for Motion+CLIP, −35 pp for Object Tracking). OCR Crop is uniquely robust because it selects high-resolution crops independently of image embedding quality. k=8 is the safest default budget: larger budgets can help in some categories, but they can also hurt badly when auxiliary frames compete with the native video for context.
           </div>
@@ -665,7 +666,7 @@
                 responsive:true, maintainAspectRatio:false,
                 plugins: {
                   legend:{position:'right', labels:{font:{family:'Inter',size:11}, boxWidth:12}},
-                  title:{display:true, text:'Budget sensitivity — obj. motion count, augment mode (n=200)', font:{family:'Space Grotesk',size:13,weight:'600'}, color:'#111', padding:{bottom:12}}
+                  title:{display:true, text:'Budget sensitivity: obj. motion count, augment mode (n=200)', font:{family:'Space Grotesk',size:13,weight:'600'}, color:'#111', padding:{bottom:12}}
                 },
                 scales: {
                   y:{min:0, max:56, title:{display:true, text:'Accuracy (%)', font:{family:'Inter',size:11}}, grid:{color:'#f0f0f0'}, ticks:{font:{family:'Inter',size:11}}},
@@ -686,7 +687,7 @@
           </div>
 
           <!-- ── Routing methods visual diagram ────────────────────────── -->
-          <h3 class="title is-4" style="margin-top:2rem">Routing methods — overview</h3>
+          <h3 class="title is-4" style="margin-top:2rem">Routing methods: overview</h3>
 
           <div style="border-radius:12px;border:1px solid #eee;overflow:hidden;margin:1.5rem 0;font-family:'Inter',sans-serif">
 
@@ -946,7 +947,7 @@
                 responsive: true, maintainAspectRatio: false,
                 plugins: {
                   legend: {display: false},
-                  title:{display:true, text:'Routing methods — replace mode, k=8 (LOOCV; † visual subset)', font:{family:'Space Grotesk',size:13,weight:'600'}, color:'#111', padding:{bottom:12}},
+                  title:{display:true, text:'Routing methods: replace mode, k=8 (LOOCV; † visual subset)', font:{family:'Space Grotesk',size:13,weight:'600'}, color:'#111', padding:{bottom:12}},
                   tooltip: {callbacks: {label: function(c){ return c.parsed.x.toFixed(1)+'%'; }}}
                 },
                 scales: {
@@ -995,7 +996,7 @@
               </div>
             </div>
           </div>
-          <p>Five lessons from 8 routing methods: (1) <strong>only the rule-based router beats the matched best single tool</strong> — it encodes domain semantics directly and recovers the entire between-category gap (+3.9 pp in LOOCV; +4.4 pp on helpful-category 80/20). (2) Learned text classifiers fail under both protocols: TF-IDF and CLIP text embeddings land at nearly identical accuracies, so text feature quality is not the bottleneck. (3) On the cached-frame subset, the best learned LOOCV routers reach 31.0%, but the best fixed single tool on that same subset reaches 33.7%, so learned visual routing still trails by 2.7 pp. (4) Combining text + visual adds nothing over visual alone (512 text dimensions drown 11 visual features). (5) The bonus text-only kNN run is the strongest learned 80/20 result on the visual+helpful subset (41.7%), but it still misses its matched baseline by 0.3 pp.</p>
+          <p>Five lessons from 8 routing methods: (1) <strong>only the rule-based router beats the matched best single tool</strong>, as it encodes domain semantics directly and recovers the entire between-category gap (+3.9 pp in LOOCV; +4.4 pp on helpful-category 80/20). (2) Learned text classifiers fail under both protocols: TF-IDF and CLIP text embeddings land at nearly identical accuracies, so text feature quality is not the bottleneck. (3) On the cached-frame subset, the best learned LOOCV routers reach 31.0%, but the best fixed single tool on that same subset reaches 33.7%, so learned visual routing still trails by 2.7 pp. (4) Combining text + visual adds nothing over visual alone (512 text dimensions drown 11 visual features). (5) The bonus text-only kNN run is the strongest learned 80/20 result on the visual+helpful subset (41.7%), but it still misses its matched baseline by 0.3 pp.</p>
           <div style="background:#f4f4f4;border-radius:8px;padding:10px 16px;margin:0.5rem 0 2rem;font-size:0.82rem">
             <strong style="font-family:'Space Grotesk',sans-serif">Finding:</strong> Routing is hard. Only the hand-crafted rule-based router beats the best fixed tool (+4.0 pp LOOCV; +4.4 pp on helpful-category 80/20). The learned classifiers and non-rule baselines all fall below their matched single-tool baselines. The gap decomposition from Exp. 1 explains why: the between-category gap (+3.9 pp) is recoverable with domain knowledge; the within-category gap (+16.0 pp) requires per-question signals that neither text nor cheap visual features can provide.
           </div>
@@ -1014,8 +1015,8 @@
       <div class="column is-full">
         <h2 class="title is-3" id="conclusion">V. Conclusion and Limitations</h2>
         <div class="content has-text-justified">
-          <p>We presented a controlled study of auxiliary evidence tools for egocentric video QA on HD-EPIC. Our main findings are: (1) augment and replace modes are nearly tied on best-tool accuracy on the 719-question fair intersection (+1.1 pp), but replace mode preserves a much larger routing opportunity on that matched subset (+17.4 pp oracle gap vs. +6.1 pp); (2) no single tool dominates — all six tools win at least one augment category, and no evidence strategy is universally optimal; (3) on the full 1,035-question replace-mode routing set, only a hand-crafted rule-based router beats the best fixed tool (+4.0 pp LOOCV; +4.4 pp on helpful-category 80/20), recovering the entire between-category gap; and (4) learned classifiers — text, visual, and combined — fall below their matched single-tool baselines, leaving a large within-category gap of +16 pp unsolved.</p>
-          <p>These results suggest that a strong video-native VLM already captures most global cues, and that auxiliary evidence only adds value for specific question types (e.g. scale reading, ingredient labels). The routing gap decomposition reveals that the main unsolved challenge is within-category routing, which requires visual or confidence signals beyond cheap first-order descriptors.</p>
+          <p>Our main answer is nuanced. Targeted auxiliary evidence can help egocentric video QA, but not as a universal add-on to the native video input. Under our resource-bounded setup, the best augment tool improves only slightly over the native-video baseline (33.7% vs. 32.3%), so simply appending selected frames is not enough to produce a large overall gain. The stronger signal is conditional: different question types benefit from different evidence tools, especially for cues such as scale readings, ingredient labels, object motion, and temporal localization.</p>
+          <p>This leads to two conclusions about routing. First, augment and replace modes are nearly tied on best-tool accuracy on the 719-question fair intersection (+1.1 pp), but replace mode preserves a much larger routing opportunity on that matched subset (+17.4 pp oracle gap vs. +6.1 pp), making it the better setting for studying tool choice. Second, routing is useful only when it captures real question-type structure: on the full 1,035-question replace-mode routing set, a hand-crafted rule-based router is the only method that beats the best fixed tool (+4.0 pp LOOCV; +4.4 pp on helpful-category 80/20), while learned text, visual, and combined classifiers all fall below their matched single-tool baselines. The remaining +16 pp within-category oracle gap shows that the main unsolved challenge is per-question routing, which likely requires stronger visual or model-confidence signals beyond cheap first-order descriptors.</p>
           <h3 class="title is-4">Limitations &amp; Future Work</h3>
           <div class="columns is-multiline">
             <div class="column is-one-third"><div class="box"><p class="title is-6">Model size</p><p>Best accuracy is bounded by the frozen 2B VLM. Larger models are unexplored.</p><p style="font-size:0.78rem;color:#888;margin-top:0.5rem"><strong>Future work:</strong> Re-running with Qwen3-VL-7B or 72B would test whether larger VLMs reduce the oracle gap or make routing less necessary.</p></div></div>
