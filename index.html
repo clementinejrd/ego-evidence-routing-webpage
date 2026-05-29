@@ -16,8 +16,31 @@
   <script defer src="./static/js/fontawesome.all.min.js"></script>
   <script src="./static/js/index.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    .qual-img { cursor: zoom-in; transition: opacity 0.15s; }
+    .qual-img:hover { opacity: 0.88; }
+    #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:9999; align-items:center; justify-content:center; cursor:zoom-out; }
+    #lightbox.open { display:flex; }
+    #lightbox img { max-width:92vw; max-height:92vh; border-radius:8px; box-shadow:0 8px 40px rgba(0,0,0,0.5); }
+    #lightbox-close { position:fixed; top:18px; right:24px; color:#fff; font-size:2rem; font-weight:700; cursor:pointer; line-height:1; }
+  </style>
 </head>
 <body>
+<div id="lightbox" onclick="this.classList.remove('open')">
+  <span id="lightbox-close" onclick="document.getElementById('lightbox').classList.remove('open')">&times;</span>
+  <img id="lightbox-img" src="" alt="">
+</div>
+<script>
+  function openLightbox(src, alt) {
+    var lb = document.getElementById('lightbox');
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox-img').alt = alt;
+    lb.classList.add('open');
+  }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') document.getElementById('lightbox').classList.remove('open');
+  });
+</script>
 
 <section class="hero">
   <div class="hero-body">
@@ -35,23 +58,13 @@
           <div class="column has-text-centered">
             <div class="publication-links">
               <span class="link-block">
-                <a href="#" class="external-link button is-normal is-rounded is-dark">
-                  <span class="icon"><i class="fas fa-file-pdf"></i></span><span>Report</span>
-                </a>
-              </span>
-              <span class="link-block">
-                <a href="#" class="external-link button is-normal is-rounded is-dark">
+                <a href="https://github.com/pavlov200912/ego-evidence-routing" class="external-link button is-normal is-rounded is-dark">
                   <span class="icon"><i class="fab fa-github"></i></span><span>Code</span>
                 </a>
               </span>
               <span class="link-block">
-                <a href="https://github.com/epic-kitchens/hd-epic-annotations" class="external-link button is-normal is-rounded is-dark">
+                <a href="https://hd-epic.github.io/site/" class="external-link button is-normal is-rounded is-dark">
                   <span class="icon"><i class="fas fa-database"></i></span><span>HD-EPIC</span>
-                </a>
-              </span>
-              <span class="link-block">
-                <a href="#" class="external-link button is-normal is-rounded is-dark">
-                  <span class="icon"><i class="fas fa-desktop"></i></span><span>Slides</span>
                 </a>
               </span>
             </div>
@@ -115,7 +128,7 @@
       <div class="column is-full">
         <h2 class="title is-3" id="intro">I. Introduction</h2>
         <div class="content has-text-justified">
-          <p>Long-form first-person video question answering is inherently an active-vision problem: not every moment in a video is equally informative, and the evidence needed to answer a question may be brief, local, or easy to miss. Modern VLMs process long videos by sampling frames at a fixed rate — typically 2 FPS with a maximum of 768 frames — which means that for videos longer than 6.4 minutes, frames are compressed into the same budget. Important cues such as scale readings, ingredient labels, or brief object interactions can be easily missed.</p>
+          <p>Long-form first-person video question answering is inherently an active-vision problem: not every moment in a video is equally informative, and the evidence needed to answer a question may be brief, local, or easy to miss. Modern VLMs process long videos by sampling frames at a fixed rate. In our setup, Qwen3-VL-2B samples the native video at <strong>1 FPS</strong> with a cap of <strong>64 frames</strong> — for a 6.4-minute clip (384 s), this means one frame every ≈ 6 seconds, leaving large temporal gaps where brief events can be missed entirely. Important cues such as scale readings, ingredient labels, or brief object interactions can be easily missed.</p>
           <p>Prior work addresses this by selecting or replacing parts of the visual input with targeted evidence. However, these approaches discard the global temporal context of the full video, which a modern video-native VLM already processes well. We instead study a different setting: <strong>auxiliary evidence augmentation</strong>. We keep the native video input to a frozen VLM and optionally augment it with a small budget of targeted auxiliary frames selected by external tools.</p>
           <p>This framing lets us ask three precise questions: (1) Can targeted auxiliary evidence improve egocentric video QA on top of the native video input of a modern VLM? (2) Is augmentation more effective than replacement under the same evidence budget? (3) If gains are category-specific, are they strong enough to justify question-type-conditioned tool routing?</p>
           <p>We evaluate on HD-EPIC, a highly-detailed egocentric benchmark with 41 hours of kitchen video and 26K multiple-choice VQA questions across 12 categories including Recipes, Ingredients, Object Motion, Nutrition, and 3D Perception. We focus on clips ≥ 6.4 minutes, where Qwen3-VL's native frame sampling is sparse enough that targeted frame selection has a meaningful chance of recovering evidence the default pathway misses.</p>
@@ -294,6 +307,47 @@
           <p>We run four experiments on HD-EPIC, each addressing one of our three research questions. The frozen VLM is Qwen3-VL-2B-Instruct throughout. All experiments use a default budget of <strong>k=8</strong> auxiliary frames drawn from a 1 FPS candidate pool. The evaluation set covers <strong>1,035 questions</strong> from 10 long-video categories (clips ≥ 6.4 min). For head-to-head augment/replace comparisons we use the <strong>fair intersection</strong> of 719 questions where all 6 tools produced results in both modes. All numbers were derived from live result CSVs (last refresh: 2026-05-29).</p>
           <p>Two reference points appear throughout: <strong>random chance = 20%</strong> (5-choice MCQ); and the <strong>perfect oracle</strong>, a theoretical upper bound computed by assigning each question the tool that answers it correctly — it cannot be deployed in practice but measures how much a router could gain if it made no mistakes.</p>
 
+          <h3 class="title is-4">Qualitative examples</h3>
+          <p style="font-size:0.88rem;color:#555;margin-bottom:1.5rem">Each panel shows k=8 frames selected by two strategies for the same question. The correct answer is shown in bold; the strategy that retrieves the most informative frames for that question type is highlighted.</p>
+
+          <!-- Example 1: CLIP wins -->
+          <div style="border:1px solid #eee;border-radius:12px;overflow:hidden;margin-bottom:2rem">
+            <div style="background:#111;padding:10px 18px;display:flex;align-items:center;gap:10px">
+              <span style="background:#3b82f6;color:#fff;border-radius:5px;padding:2px 10px;font-size:0.68rem;font-weight:800;font-family:'Space Grotesk',sans-serif;flex-shrink:0">✓ CLIP wins</span>
+              <span style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.82rem;color:#fff">recipe_step — temporal step localization</span>
+            </div>
+            <div style="padding:14px 18px;background:#fafafa;border-bottom:1px solid #eee">
+              <div style="font-size:0.78rem;color:#555;margin-bottom:4px"><span style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#111">Question:</span> When did the participant perform step "Add couscous and boiling water to pot (no flame needed), leave until water has been absorbed" from recipe <em>Fish Cakes and Vegetables</em>?</div>
+              <div style="font-size:0.78rem;color:#555">Multiple-choice timestamps — CLIP retrieves frames semantically matching the pouring/mixing action.</div>
+            </div>
+            <div style="padding:14px 18px">
+              <img src="static/images/clip_advantage.jpeg" alt="CLIP vs Uniform frame grids for recipe step question" class="qual-img" style="width:100%;border-radius:6px;display:block" onclick="openLightbox(this.src,this.alt)" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+              <div style="display:none;background:#f4f4f4;height:160px;border-radius:6px;align-items:center;justify-content:center;font-size:0.75rem;color:#aaa">[ Image manquante ]</div>
+              <p style="font-size:0.78rem;color:#666;margin-top:10px"><strong style="font-family:'Space Grotesk',sans-serif;color:#333">Observation.</strong> <strong>CLIP</strong> retrieves frames that are semantically close to the question text — the pot, couscous, and pouring action — concentrating evidence around the relevant step. <strong>Uniform</strong> spreads k=8 frames evenly over the full clip (often 20+ minutes), so the brief step may fall between sampled timestamps entirely. This illustrates the within-category diversity: for recipe_step questions, which require temporal localization, CLIP's text-image alignment is the right inductive bias.</p>
+            </div>
+          </div>
+
+          <!-- Example 2: OCR Crop wins -->
+          <div style="border:1px solid #eee;border-radius:12px;overflow:hidden;margin-bottom:2rem">
+            <div style="background:#111;padding:10px 18px;display:flex;align-items:center;gap:10px">
+              <span style="background:#E2001A;color:#fff;border-radius:5px;padding:2px 10px;font-size:0.68rem;font-weight:800;font-family:'Space Grotesk',sans-serif;flex-shrink:0">✓ OCR Crop wins</span>
+              <span style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.82rem;color:#fff">ingredient_ingredient_weight — scale reading</span>
+            </div>
+            <div style="padding:14px 18px;background:#fafafa;border-bottom:1px solid #eee">
+              <div style="font-size:0.78rem;color:#555;margin-bottom:4px"><span style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#111">Question:</span> How much did the participant weigh of brown onions in this video?</div>
+              <div style="font-size:0.78rem;color:#555">A: 113 g &nbsp;·&nbsp; <strong style="color:#E2001A">B: 98 g ✓</strong> &nbsp;·&nbsp; C: 117 g &nbsp;·&nbsp; D: 101 g &nbsp;·&nbsp; E: 94 g</div>
+            </div>
+            <div style="padding:14px 18px">
+              <img src="static/images/ingredient_ingredient_weight.jpeg" alt="All 5 strategies for ingredient weight question" class="qual-img" style="width:100%;border-radius:6px;display:block" onclick="openLightbox(this.src,this.alt)" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+              <div style="display:none;background:#f4f4f4;height:160px;border-radius:6px;align-items:center;justify-content:center;font-size:0.75rem;color:#aaa">[ Image manquante ]</div>
+              <p style="font-size:0.78rem;color:#666;margin-top:8px">All 5 tools compared. CLIP, Motion+CLIP, and Object Tracking have no inductive bias toward text displays — their selected frames look virtually identical to Uniform (wide kitchen shots, no scale visible). Only OCR Crop consistently zooms in on the digital readout.</p>
+              <div style="margin-top:12px;margin-bottom:4px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.7px;font-family:'Space Grotesk',sans-serif;font-weight:700;color:#999">Focused view — OCR Crop vs Uniform</div>
+              <img src="static/images/ocr_uniform.jpeg" alt="OCR Crop vs Uniform focused comparison" class="qual-img" style="width:100%;border-radius:6px;display:block" onclick="openLightbox(this.src,this.alt)" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+              <div style="display:none;background:#f4f4f4;height:80px;border-radius:6px;align-items:center;justify-content:center;font-size:0.75rem;color:#aaa">[ Image manquante ]</div>
+              <p style="font-size:0.78rem;color:#666;margin-top:10px"><strong style="font-family:'Space Grotesk',sans-serif;color:#333">Observation.</strong> <strong>OCR Crop</strong> consistently retrieves frames where the digital scale is visible and readable (96, 98 g), providing a high-resolution crop of the display. <strong>Uniform</strong> sampling returns wide kitchen scenes — the scale may not even be in frame at the sampled timestamps. For a numeric-readout question, the evidence quality gap is decisive.</p>
+            </div>
+          </div>
+
           <!-- Experiment 1 -->
           <div style="display:flex;align-items:flex-start;gap:12px;margin:2rem 0 0.75rem;padding:12px 16px;background:#f9f9f9;border-left:3px solid #E2001A;border-radius:0 8px 8px 0">
             <div style="font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:1rem;color:#E2001A;flex-shrink:0;padding-top:1px">Exp. 1</div>
@@ -325,12 +379,6 @@
                     data: [33.7, 39.8],
                     backgroundColor: '#111', borderRadius: 5, order: 2
                   },
-                  {
-                    type: 'line', label: 'qwen_native (32.3%)',
-                    data: [32.3, 32.3],
-                    borderColor: '#E2001A', borderWidth: 2,
-                    borderDash: [6, 4], pointRadius: 0, fill: false, order: 1
-                  }
                 ]
               },
               options: {
@@ -346,7 +394,23 @@
                   },
                   x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 12, weight: '600' } } }
                 }
-              }
+              },
+              plugins: [{
+                id: 'baselineH',
+                afterDraw: function(chart) {
+                  var ctx2 = chart.ctx, yScale = chart.scales.y, xScale = chart.scales.x;
+                  var y = yScale.getPixelForValue(32.3);
+                  ctx2.save();
+                  ctx2.beginPath();
+                  ctx2.moveTo(xScale.left, y);
+                  ctx2.lineTo(xScale.right, y);
+                  ctx2.strokeStyle = '#E2001A';
+                  ctx2.lineWidth = 2;
+                  ctx2.setLineDash([6, 4]);
+                  ctx2.stroke();
+                  ctx2.restore();
+                }
+              }]
             });
           })();
           </script>
@@ -448,17 +512,6 @@
                       backgroundColor: '#bbb',
                       borderRadius: 4,
                     },
-                    {
-                      type: 'line',
-                      label: 'Qwen native baseline (32.3%)',
-                      data: [32.3, 32.3, 32.3, 32.3, 32.3, 32.3],
-                      borderColor: '#E2001A',
-                      borderWidth: 2,
-                      borderDash: [6, 4],
-                      pointRadius: 0,
-                      fill: false,
-                      order: 0,
-                    }
                   ]
                 },
                 options: {
@@ -470,18 +523,29 @@
                   },
                   scales: {
                     y: {
-                      min: 28,
-                      max: 36,
+                      min: 28, max: 36,
                       title: { display: true, text: 'Accuracy (%)', font: { family: 'Inter', size: 12 } },
-                      grid: { color: '#f0f0f0' },
-                      ticks: { font: { family: 'Inter', size: 11 } }
+                      grid: { color: '#f0f0f0' }, ticks: { font: { family: 'Inter', size: 11 } }
                     },
-                    x: {
-                      grid: { display: false },
-                      ticks: { font: { family: 'Inter', size: 11 } }
-                    }
+                    x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 11 } } }
                   }
-                }
+                },
+                plugins: [{
+                  id: 'nativeLine',
+                  afterDraw: function(chart) {
+                    var ctx2 = chart.ctx, yScale = chart.scales.y, xScale = chart.scales.x;
+                    var y = yScale.getPixelForValue(32.3);
+                    ctx2.save();
+                    ctx2.beginPath();
+                    ctx2.moveTo(xScale.left, y);
+                    ctx2.lineTo(xScale.right, y);
+                    ctx2.strokeStyle = '#E2001A';
+                    ctx2.lineWidth = 2;
+                    ctx2.setLineDash([6, 4]);
+                    ctx2.stroke();
+                    ctx2.restore();
+                  }
+                }]
               });
             })();
           </script>
@@ -898,39 +962,6 @@
 
 
 
-          <h3 class="title is-4">Qualitative examples</h3>
-          <p>Below are illustrative cases showing where auxiliary evidence helps or fails. Replace the placeholder cards with actual video clips or frame collages saved to <code>static/videos/</code> or <code>static/images/</code>.</p>
-          <div class="columns is-multiline">
-            <div class="column is-half">
-              <div class="box" style="border:1.5px dashed #ddd">
-                <p class="title is-6" style="color:#E2001A">✓ OCR Crop helps — ingredient exact</p>
-                <div style="background:#f4f4f4;height:140px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;color:#aaa;margin-bottom:0.75rem">[ Add frame collage: ocr_crop k=8 selecting text regions ]</div>
-                <p style="font-size:0.8rem">A question asks for the exact quantity of an ingredient visible on a label. <code>ocr_crop</code> detects the text-bearing frame and provides a high-resolution crop. Native sampling misses it at 1 FPS.</p>
-              </div>
-            </div>
-            <div class="column is-half">
-              <div class="box" style="border:1.5px dashed #ddd">
-                <p class="title is-6" style="color:#E2001A">✓ Motion+CLIP helps — obj. motion itinerary</p>
-                <div style="background:#f4f4f4;height:140px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;color:#aaa;margin-bottom:0.75rem">[ Add frame collage: motion_then_clip tracking an object's path ]</div>
-                <p style="font-size:0.8rem">A question asks about the locations visited by an object. Motion detection captures high-change frames at object interactions; CLIP refinement ranks them by question relevance.</p>
-              </div>
-            </div>
-            <div class="column is-half">
-              <div class="box" style="border:1.5px dashed #ddd">
-                <p class="title is-6" style="color:#555">✗ No tool helps — recipe step localization</p>
-                <div style="background:#f4f4f4;height:140px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;color:#aaa;margin-bottom:0.75rem">[ Add example: all tools underperform native on recipe_step ]</div>
-                <p style="font-size:0.8rem">Step localization requires understanding the temporal structure of the full video. 8 aux frames are insufficient; augment best (12.1%) falls below <code>qwen_native</code> (15.2%) on this category.</p>
-              </div>
-            </div>
-            <div class="column is-half">
-              <div class="box" style="border:1.5px dashed #ddd">
-                <p class="title is-6" style="color:#555">✗ k=32 budget collapse — augment + CLIP</p>
-                <div style="background:#f4f4f4;height:140px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;color:#aaa;margin-bottom:0.75rem">[ Add example: k=32 low-resolution frames causing CLIP to fail ]</div>
-                <p style="font-size:0.8rem">With 32 aux frames added alongside the native video, Qwen3-VL compresses frame resolution. CLIP image features become unreliable at low resolution, dropping <em>obj. motion count</em> accuracy from 44.5% to 16.5%.</p>
-              </div>
-            </div>
-          </div>
-
         </div>
       </div>
     </div>
@@ -946,10 +977,12 @@
           <p>We presented a controlled study of auxiliary evidence tools for egocentric video QA on HD-EPIC. Our main findings are: (1) augment and replace modes are nearly tied on best-tool accuracy (+1.1 pp), but replace mode preserves a much larger routing opportunity (+17.4 pp oracle gap vs. +6.1 pp); (2) no single tool dominates — five different tools each win at least one category, and augment is not uniformly better than replace; (3) only a hand-crafted rule-based router beats the best fixed tool (+4.0 pp LOOCV), recovering the entire between-category gap; and (4) all learned classifiers — text, visual, and combined — fall below the single-tool baseline, leaving a large within-category gap of +16 pp unsolved.</p>
           <p>These results suggest that a strong video-native VLM already captures most global cues, and that auxiliary evidence only adds value for specific question types (e.g. scale reading, ingredient labels). The routing gap decomposition reveals that the main unsolved challenge is within-category routing, which requires visual or confidence signals beyond cheap first-order descriptors.</p>
           <h3 class="title is-4">Limitations</h3>
-          <div class="columns">
-            <div class="column"><div class="box"><p class="title is-6">Model size</p><p>Best accuracy is bounded by the frozen 2B VLM. Larger models are unexplored.</p></div></div>
-            <div class="column"><div class="box"><p class="title is-6">Sample size</p><p>Small per-category samples (as few as n=31) mean results lack statistical confidence for some categories.</p></div></div>
-            <div class="column"><div class="box"><p class="title is-6">Within-category routing</p><p>The +16 pp within-category oracle gap is unsolved. Cheap visual features are not sufficient; the routing problem requires stronger signals.</p></div></div>
+          <div class="columns is-multiline">
+            <div class="column is-one-third"><div class="box"><p class="title is-6">Model size</p><p>Best accuracy is bounded by the frozen 2B VLM. Larger models are unexplored.</p></div></div>
+            <div class="column is-one-third"><div class="box"><p class="title is-6">Sample size</p><p>Small per-category samples (as few as n=31) mean results lack statistical confidence for some categories.</p></div></div>
+            <div class="column is-one-third"><div class="box"><p class="title is-6">Within-category routing</p><p>The +16 pp within-category oracle gap is unsolved. Cheap visual features are not sufficient; the routing problem requires stronger signals.</p></div></div>
+            <div class="column is-one-third"><div class="box"><p class="title is-6">Single domain</p><p>All experiments are conducted on HD-EPIC (kitchen activities only). Conclusions may not generalise to other egocentric domains such as assembly, sports, or healthcare.</p></div></div>
+            <div class="column is-one-third"><div class="box"><p class="title is-6">Cheap tools</p><p>Evidence tools use lightweight models (CLIP ViT-B/32, GroundingDINO-tiny, EasyOCR). Stronger backbones could change the relative ranking of tools and the routing conclusions.</p></div></div>
           </div>
         </div>
       </div>
@@ -979,13 +1012,13 @@
             <div class="column is-half">
               <div class="box" style="display:flex;gap:12px;align-items:flex-start">
                 <div class="contrib-avatar">EA</div>
-                <div><p><strong>Eren Akcanal</strong></p><p>CLIP/SigLIP retrieval tool and semantic frame selection.</p></div>
+                <div><p><strong>Eren Akcanal</strong></p><p>CLIP retrieval tool and semantic frame selection.</p></div>
               </div>
             </div>
             <div class="column is-half">
               <div class="box" style="display:flex;gap:12px;align-items:flex-start">
                 <div class="contrib-avatar">IP</div>
-                <div><p><strong>Ivan Pavlov</strong></p><p>Project codebase and infrastructure, hand detection tool, midterm presentation slides.</p></div>
+                <div><p><strong>Ivan Pavlov</strong></p><p>Project codebase and infrastructure, object tracking tool, midterm presentation slides.</p></div>
               </div>
             </div>
           </div>
