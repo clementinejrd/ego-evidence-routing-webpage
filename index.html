@@ -167,7 +167,7 @@
         <h2 class="title is-3" id="method">III. Method</h2>
         <div class="content has-text-justified">
           <h3 class="title is-4">Pipeline overview</h3>
-          <p>For each question-video pair from HD-EPIC, we sample a candidate frame pool at 1 FPS from the clip window. An auxiliary evidence tool selects k=8 frames from this pool. The frozen VLM (Qwen3-VL-2B) then receives either: (a) the native video + the k auxiliary frames (<em>augment mode</em>), or (b) only the k auxiliary frames (<em>replace mode</em>), along with the multiple-choice question.</p>
+          <p>For each question-video pair from HD-EPIC, we sample a candidate frame pool at 1 FPS from the clip window. An auxiliary evidence tool selects k=8 frames from this pool (our default budget; we ablate over k ∈ {8, 16, 32} in Exp. 3). The frozen VLM (Qwen3-VL-2B) then receives either: (a) the native video + the k auxiliary frames (<em>augment mode</em>), or (b) only the k auxiliary frames (<em>replace mode</em>), along with the multiple-choice question.</p>
 
           <div style="background:#f9f9f9;border-radius:12px;border:1px solid #eee;padding:1.25rem 1.5rem;overflow-x:auto;margin:1.5rem 0">
             <div style="display:flex;align-items:center;gap:4px;min-width:680px;justify-content:center">
@@ -630,11 +630,11 @@
             <div style="font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:1rem;color:#E2001A;flex-shrink:0;padding-top:1px">Exp. 3</div>
             <div>
               <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.88rem;color:#111">Does a larger frame budget (k=16, k=32) improve accuracy?</div>
-              <div style="font-size:0.78rem;color:#666;margin-top:3px">We re-run the ablation at k=8, k=16, and k=32 on four representative categories. The same fair-intersection protocol applies within each budget. Results below focus on <em>obj. motion count</em> (n=200) in augment mode, where the effect is most dramatic.</div>
+              <div style="font-size:0.78rem;color:#666;margin-top:3px">We re-run the ablation at k=8, k=16, and k=32 on four categories with data at every budget (<em>ingredient exact</em>, <em>obj. motion count</em>, <em>recipe multi-step</em>, <em>fine-grained</em>). Results below focus on <em>obj. motion count</em> (n=200) in augment mode, where the resolution collapse is most dramatic; the other categories show no comparable collapse.</div>
             </div>
           </div>
 
-          <h3 class="title is-4">Budget sensitivity — augment mode (obj. motion count, n=200)</h3>
+          <h3 class="title is-4">Budget sensitivity — augment mode (obj. motion count, n=200, shown as representative)</h3>
 
           <!-- Budget ablation line chart -->
           <div style="position:relative;height:280px;margin:1.5rem 0">
@@ -976,13 +976,13 @@
         <div class="content has-text-justified">
           <p>We presented a controlled study of auxiliary evidence tools for egocentric video QA on HD-EPIC. Our main findings are: (1) augment and replace modes are nearly tied on best-tool accuracy (+1.1 pp), but replace mode preserves a much larger routing opportunity (+17.4 pp oracle gap vs. +6.1 pp); (2) no single tool dominates — five different tools each win at least one category, and augment is not uniformly better than replace; (3) only a hand-crafted rule-based router beats the best fixed tool (+4.0 pp LOOCV), recovering the entire between-category gap; and (4) all learned classifiers — text, visual, and combined — fall below the single-tool baseline, leaving a large within-category gap of +16 pp unsolved.</p>
           <p>These results suggest that a strong video-native VLM already captures most global cues, and that auxiliary evidence only adds value for specific question types (e.g. scale reading, ingredient labels). The routing gap decomposition reveals that the main unsolved challenge is within-category routing, which requires visual or confidence signals beyond cheap first-order descriptors.</p>
-          <h3 class="title is-4">Limitations</h3>
+          <h3 class="title is-4">Limitations &amp; Future Work</h3>
           <div class="columns is-multiline">
-            <div class="column is-one-third"><div class="box"><p class="title is-6">Model size</p><p>Best accuracy is bounded by the frozen 2B VLM. Larger models are unexplored.</p></div></div>
-            <div class="column is-one-third"><div class="box"><p class="title is-6">Sample size</p><p>Small per-category samples (as few as n=31) mean results lack statistical confidence for some categories.</p></div></div>
-            <div class="column is-one-third"><div class="box"><p class="title is-6">Within-category routing</p><p>The +16 pp within-category oracle gap is unsolved. Cheap visual features are not sufficient; the routing problem requires stronger signals.</p></div></div>
-            <div class="column is-one-third"><div class="box"><p class="title is-6">Single domain</p><p>All experiments are conducted on HD-EPIC (kitchen activities only). Conclusions may not generalise to other egocentric domains such as assembly, sports, or healthcare.</p></div></div>
-            <div class="column is-one-third"><div class="box"><p class="title is-6">Cheap tools</p><p>Evidence tools use lightweight models (CLIP ViT-B/32, GroundingDINO-tiny, EasyOCR). Stronger backbones could change the relative ranking of tools and the routing conclusions.</p></div></div>
+            <div class="column is-one-third"><div class="box"><p class="title is-6">Model size</p><p>Best accuracy is bounded by the frozen 2B VLM. Larger models are unexplored.</p><p style="font-size:0.78rem;color:#888;margin-top:0.5rem"><strong>Future work:</strong> Re-running with Qwen3-VL-7B or 72B would test whether larger VLMs reduce the oracle gap or make routing less necessary.</p></div></div>
+            <div class="column is-one-third"><div class="box"><p class="title is-6">Sample size</p><p>Small per-category samples (as few as n=31) mean results lack statistical confidence for some categories.</p><p style="font-size:0.78rem;color:#888;margin-top:0.5rem"><strong>Future work:</strong> Evaluating on the full HD-EPIC set (all clip lengths) would increase per-category n and yield more reliable category-level comparisons.</p></div></div>
+            <div class="column is-one-third"><div class="box"><p class="title is-6">Within-category routing</p><p>The +16 pp within-category oracle gap is unsolved. Cheap visual features are insufficient; routing at the question level requires stronger signals.</p><p style="font-size:0.78rem;color:#888;margin-top:0.5rem"><strong>Future work:</strong> Model confidence scores, VLM attention maps, or fine-grained embeddings (e.g. CLIP ViT-L/14) could provide the per-question discriminability that first-order descriptors lack.</p></div></div>
+            <div class="column is-one-third"><div class="box"><p class="title is-6">Single domain</p><p>All experiments are conducted on HD-EPIC (kitchen activities only). Conclusions may not generalise to other egocentric domains such as assembly, sports, or healthcare.</p><p style="font-size:0.78rem;color:#888;margin-top:0.5rem"><strong>Future work:</strong> Repeating the study on Ego4D or EPIC-Kitchens would test whether the between-category gap and tool rankings hold across different activity domains.</p></div></div>
+            <div class="column is-one-third"><div class="box"><p class="title is-6">Cheap tools</p><p>Evidence tools use lightweight models (CLIP ViT-B/32, GroundingDINO-tiny, EasyOCR). Stronger backbones could change the relative tool ranking and routing conclusions.</p><p style="font-size:0.78rem;color:#888;margin-top:0.5rem"><strong>Future work:</strong> Replacing CLIP ViT-B/32 with ViT-L/14 or using a larger OCR model (e.g. PaddleOCR) would test whether tool quality is the binding constraint.</p></div></div>
           </div>
         </div>
       </div>
